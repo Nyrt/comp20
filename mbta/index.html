@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>MBTA</title>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>
+<link rel="stylesheet" href="style.css" type="text/css" />
+<script>
+	var map;
+	var myPos;
+
+	var myPosMarker;
+
+	function initMap(){
+		map = new google.maps.Map(document.getElementById('map_canvas'), {
+	  		center: {lat: 42.3601, lng: -71.0589}, 
+	  		zoom: 11
+		}); 
+		getLocation();
+		initRedline();
+	}
+
+	function getLocation() {
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(function(position) {
+				myPos = {
+              		lat: position.coords.latitude,
+              		lng: position.coords.longitude
+            	};
+				map.panTo(myPos);
+				myPosMarker = new google.maps.Marker({
+			        position: myPos,
+			        map: map,
+			        title: "You Are Here",
+	        	});
+			});
+		}
+	}
+
+	function initRedline(){
+		var request = new XMLHttpRequest();
+		request.open("GET", "//enigmatic-hamlet-27757.herokuapp.com/redline.json", true);
+
+		request.onreadystatechange = function() {
+			if(request.readyState == 4 && request.status == 200){
+				renderRedline(JSON.parse(request.responseText));
+			} else if (request.status == 404){
+				// try resending the request until it works! (in testing it would sometimes give a 404)
+				setTimeout(initRedline(), 500);
+			}
+		};
+		request.send();
+	}
+
+	function renderRedline(tripData){
+		var stops = [
+				{name:"Alewife",           loc:{lat:42.395428,   lng:-71.142483}},
+				{name:"Davis",             loc:{lat:42.39674,    lng:-71.121815}},
+				{name:"Porter Square",     loc:{lat:42.3884,     lng:-71.11914899999999}},
+				{name:"Harvard Square",    loc:{lat:42.373362,   lng:-71.118956}},
+				{name:"Central Square",    loc:{lat:42.365486,   lng:-71.103802}},
+				{name:"Kendall/MIT",       loc:{lat:42.36249079, lng:-71.08617653}},
+				{name:"Charles/MGH",       loc:{lat:42.361166,   lng:-71.070628}},
+				{name:"Park Street",       loc:{lat:42.35639457, lng:-71.0624242}},
+				{name:"Downtown Crossing", loc:{lat:42.355518,   lng:-71.060225}},
+				{name:"South Station",     loc:{lat:42.352271,   lng:-71.05524200000001}},
+				{name:"Broadway",          loc:{lat:42.342622,   lng:-71.056967}},
+				{name:"Andrew",            loc:{lat:42.330154,   lng:-71.057655}},
+				{name:"JFK/UMass",         loc:{lat:42.320685,   lng:-71.052391}},
+
+				{name:"North Quincy",      loc:{lat:42.275275,   lng:-71.029583}},
+				{name:"Wollaston",         loc:{lat:42.2665139,  lng:-71.0203369}},
+				{name:"Quincy Center",     loc:{lat:42.251809,   lng:-71.005409}},
+				{name:"Quincy Adams",      loc:{lat:42.233391,   lng:-71.007153}},
+				{name:"Braintree",         loc:{lat:42.2078543 , lng:-71.0011385}},
+
+				{name:"Savin Hill",        loc:{lat:42.31129,    lng:-71.053331}},
+				{name:"Fields Corner",     loc:{lat:42.300093,   lng:-71.061667}},
+				{name:"Shawmut",           loc:{lat:42.29312583, lng:-71.06573796000001}},
+				{name:"Ashmont",           loc:{lat:42.284652,   lng:-71.06448899999999}}
+
+		];
+
+		var line = [];
+		
+		var minDistance;
+		var closestStop;
+
+		for(var stop = 0; stop < stops.length; stop++){
+
+			//check if this is the closest station
+			var distance = haversine(myPos, stops[stop].loc)
+			if (minDistance == null || distance < minDistance){
+				minDistance = distance;
+				closestStop = stop;
+			}
+
+			// build incoming train data
+			var info  = "<h1>" + stops[stop].name +  "</h1>";
+
+			var incomingTrains = 0;
+			for(trip in tripData.TripList.Trips){
+				for (destination in tripData.TripList.Trips[trip].Predictions){
+					if (tripData.TripList.Trips[trip].Predictions[destination].Stop == stops[stop].name){
+						// account for update lag
+						var time = tripData.TripList.Trips[trip].Predictions[destination].Seconds + ((new Date).getTime()/1000 - tripData.TripList.CurrentTime);
+						if (time > 0){
+							info += "<div id='prediction'>Train incoming in " + Math.round(time*10)/10 + " seconds</div>";
+							incomingTrains++;
+						}
+					}
+				}
+			}
+			if (incomingTrains == 0)
+				info += "<div id='prediction'>No incoming trains</div>"
+			addStationMarker(stops[stop].name, stops[stop].loc, info);
+
+			// build the polylines
+	        if(stop < 18)
+	        	line[stop] = stops[stop].loc;
+	        else
+	        	line[stop-17] = stops[stop].loc;
+
+	        if(stop == 17){
+	        	var redline = new google.maps.Polyline({
+					path: line,
+					map: map,
+					geodesic: true,
+					strokeColor: '#FF0000',
+					strokeOpacity: 1.0,
+					strokeWeight: 2
+		        });
+	        	line = [stops[12].loc];
+	        }
+		}
+
+		var redline = new google.maps.Polyline({
+			path: line,
+			map: map,
+			geodesic: true,
+			strokeColor: '#FF0000',
+			strokeOpacity: 1.0,
+			strokeWeight: 2
+        });
+
+		myInfo = "<div id='closestStop'>closest stop is " + stops[closestStop].name + ", " + minDistance + " miles away</div>";
+
+        var infowindow = new google.maps.InfoWindow({
+				content: myInfo
+			});
+
+	        myPosMarker.addListener('click', function(){
+	        	infowindow.open(map, myPosMarker);
+	        });
+
+	    var closestStationLine = new google.maps.Polyline({
+			path: [myPos, stops[closestStop].loc],
+			map: map,
+			geodesic: true,
+			strokeColor: '#000000',
+			strokeOpacity: 1.0,
+			strokeWeight: 2
+        });
+	}
+
+	function addStationMarker(name, location, info){
+		var marker = new google.maps.Marker({
+		        position: location,
+		        map: map,
+		        title: name,
+		        icon: "marker.png",
+	        });
+
+			var infowindow = new google.maps.InfoWindow({
+				content: info
+			});
+
+	        marker.addListener('click', function(){
+	        	infowindow.open(map, marker);
+	        });
+	}
+
+	// adapted from StackOverflow response:
+	// http://stackoverflow.com/questions/14560999/using-the-haversine-formula-in-javascript
+	function haversine(locA, locB){
+		var R = 6371; // km 
+		//has a problem with the .toRad() method below.
+		var x1 = locB.lat-locA.lat;
+		var dLat = x1* Math.PI / 180;  
+		var x2 = locB.lng-locA.lng;
+		var dLon = x2 * Math.PI / 180;  
+		var a = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+		                Math.cos(locA.lat* Math.PI / 180) * Math.cos(locB.lat* Math.PI / 180) * 
+		                Math.sin(dLon/2) * Math.sin(dLon/2);  
+		var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+		return R * c; 
+	}
+
+</script>
+</head>
+
+<body onload="initMap()">
+
+<div id="map_canvas"> </div>
+
+
+
+</body>
+</html>

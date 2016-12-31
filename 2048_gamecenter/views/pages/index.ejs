@@ -1,0 +1,49 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+  <title>2048 Game Center</title>
+  <link rel="stylesheet" href="main.css"/>
+  <meta charset="utf-8" />
+
+</head>
+
+<body>
+  <h1 id='title'>2048 game center</h1>
+
+  <div id="scores">Loading Scores...</div>
+
+  <script>var request = new XMLHttpRequest();
+		request.open("GET", "//enigmatic-hamlet-27757.herokuapp.com/allscores.json", true); 
+
+		request.onreadystatechange = function() {
+			if(request.readyState == 4 && request.status == 200){
+				console.log(request.responseText);
+				displayScores(JSON.parse(request.responseText));
+			} else if (request.status == 404){
+				document.getElementById("scores").innerHTML = "Could not load scores";
+			}
+		};
+		request.send();
+
+		function displayScores(data){
+			var scoreboard = document.getElementById("scores");
+			scoreboard.innerHTML = "";
+			for (score in data){
+				scoreboard.innerHTML+= "<div class='score'>" + data[score].username +": " + data[score].score + " points on " + parse_timestamp(data[score].created_at) + "</div>"
+			}
+		}
+
+		function parse_timestamp(timestamp){
+	  	var date = new Date(timestamp);
+
+	  	var months = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+	  	return months[date.getMonth()] + " " + date.getDay() + ", " + date.getFullYear() + " at " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	  	}
+	</script>
+
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Classic Movie</title>
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+<h1 id="title">Classic Movie</h1>
+
+<video src="https://www.cs.tufts.edu/comp/20/classic.mp4" id="classic_video" controls></video>
+<div id="movie_quotes"></div>
+
+<script>
+	function annotate() {
+		var v = document.getElementsByTagName("video")[0];
+		// Complete this section and create a CSS file named style.css
+		var script = [  "", 
+						"Igor: DR. FRANKENSTEIN?!?!?",
+						"Dr. Frederick Frankenstein: Frokensteen.",
+						"Igor: You\'re putting me on.",
+						"Dr. Frederick Frankenstein: No, it pronounced, \"Frokensteen\".",
+						"Igor: Do you also say Froaderick?",
+						"Dr. Frederick Frankenstein: No . . . \"Frederick.\"",
+						"Igor: Well, why isn\'t it \'Froaderick Frokensteen\'?",
+						"Dr. Frederick Frankenstein: It isn't, it's \"Frederick Frokensteen\"",
+						"Igor: I see.",
+						"Dr. Frederick Frankenstein: You must be Igor. [ee-gor]",
+						"Igor: No, it\'s pronounced \"eye-gor.\"",
+						"Dr. Frederick Frankenstein: But they told me it was \"ee-gor\"...",
+						"Igor: Well, they were wrong then, weren\'t they?",
+						"Dr. Frederick Frankenstein: Uh, you were sent here by Herr Falkstein, weren\'t you?",
+						"Igor: Yes. My grandfather used to work for your grandfather.",
+						"Dr. Frederick Frankenstein: How nice.",
+						"Igor: Of course the rates have gone up.",
+						"Dr. Frederick Frankenstein: Of course, of course, I\'m sure we\'ll get along splendidly. Oh, I uh, you know I don't mean to embarrass you, but I\'m rather a brilliant surgeon. Perhaps I can help you with that hump.",
+						"Igor: What hump?"];
+
+		time = v.currentTime;
+		if(time < 24)
+			line = 0;
+		else if (time < 32)
+			line = 1;
+		else if (time < 35)
+			line = 2;
+		else if (time < 36)	
+			line = 3;
+		else if (time < 40)	
+			line = 4;
+		else if (time < 42)	
+			line = 5;
+		else if (time < 45)	
+			line = 6;
+		else if (time < 48)	
+			line = 7;
+		else if (time < 51)	
+			line = 8;
+		else if (time < 53)	
+			line = 9;
+		else if (time < 54)	
+			line = 10;
+		else if (time < 57)	
+			line = 11;
+		else if (time < 59)	
+			line = 12;
+		else if (time < 61)	
+			line = 13;
+		else if (time < 65)	
+			line = 14;
+		else if (time < 70)	
+			line = 15;
+		else if (time < 72)	
+			line = 16;
+		else if (time < 75)	
+			line = 17;
+		else if (time < 90)	
+			line = 18;
+		else
+			line = 19;
+
+		if(line%2)
+			speaker = "igor";
+		else
+			speaker = "frank";
+
+		subtitle = '<span id=\"'  + speaker + '\">' + script[line] + '</span>';
+
+		document.getElementById("movie_quotes").innerHTML = subtitle;
+		setTimeout(annotate, 100); 
+	}
+
+	document.getElementsByTagName("video")[0].addEventListener('canplay', annotate);
+</script>
+</body>
+</html>	

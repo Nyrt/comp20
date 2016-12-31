@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  
+<title>Security Asessment</title>
+</head>
+
+<body>
+
+<h1>Security Asessment<h1>
+
+Nathan Watts
+
+<h2>Introduction</h2>
+<p>
+The goal of this security asessment is to find vulnerabilities in the 2048 game center and advise on possible solutions. The game center is designed to recieve, store, and display a leaderboard of high scores from the game '2048.' The server has three paths, GET "/", which displays a leaderbord with scores sorted in descending order, POST "/submit.json", which allows a user to submit a score, and GET "score.json", which allows a user to find scores for a specific user with a query string containing their username.
+</p>
+
+<h2>Methodology</h2>
+<p>
+The initial investigation was black-box, simply probing for obvious vulnerabilities. I did this using chrome and its developer tools, as well as CURL, for making POST requests. This was how I found the XXS vulnterabilities. After that, I took a look at the code, and from that was able to find the mongodb vulnerability. To exploit it, I created my own copy of the server which accessed the database with which I could demonstrate the vulnerability.
+</p>
+
+<h2>Abstract</h2>
+<p>
+The server has several vulnerabilities, both to the client and the server. The submit.json post path is vulnerable to XSS injection in both the "username" and "grid" fields, which opens up clients to XSS. Additionally, there is no source validation-- all cross-site origins are allowed. </p> 
+<p> The database server is also vulnerable. The database connection is hardcoded, allowing direct access to the database and arbitrary manipulation of the data by third parties. 
+</p> 
+<h2>Issues Found</h2>
+
+<h3>XXS</h3>
+<p>
+The XXS vulnerabilities effect both the homepage scoreboard (the username vunlerability) and the /scores.json path (the grid vulnerability) potentially disabling them or exposing the client to malicious code. These vulnerabilities allow attackers to embed arbitrary javascript code into the homepage for every client. They can both be exploited through CURL, and the username vulnerability even through an authorized 2048 client when prompted for a username, or by tampering with the POST request. The vulnerabilities are the result of a lack of input sanitization (though score is sanitized well enough to prevent XXS on that field.) Below is a very basic example of what is possible. In this case, a score was submitted with the username "&lt;script&gt;alert(1)&lt;\script&gt;" which causes the popup window shown to appear. This code could, however, modify the document-object model to show fraudulent data, or ask the user for login information in a phishing attempt, or more.
+</p>
+
+<img src="XSS.png" alt="demonstration of simple XSS attack"/>
+
+<p>The username vulnerability could be resolved by removing special characters from the username before adding it to the database. The code to do this is shown below:</p>
+
+<pre>username = username.replace(/[^\w\s]/gi, '');</pre>
+
+<p>The grid vulnerability can be prevented by blocking any data that contains angle brackets. Since the grid format doesn't normally include angle brackets, valid data will be unaffected and data including XSS attacks will be rejected:</p>
+
+<pre>
+if (grid.search("&lt;") != -1 || grid.search("&lt;") != -1)
+	response.send(500);
+</pre>
+
+<h3>Database Insecurity</h3>
+
+<p>This vulnerability is due to the heroku server location being hardcoded into the server code, and the heroku server not having any source validation. It was found during white-box analysis at the line in the server's index.js:</p>
+
+<pre>var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_4wjj5053:8jv9mgmgn1p6nj8r9i2om41c9l@ds157677.mlab.com:57677/heroku_4wjj5053';
+</pre>
+
+<p>I used this location to create my own nodejs which used the same mongo database (this code is included in hax.js). This allowed me to execute arbitrary operations on the database very easily. The severity of this issue is VERY HIGH. It allows an attacker to steal sensive data, erase entries from the database, modify existing entries, add fraudulent data that bypasses any data validation, and more. Below is a demonstration of stealing all the data, bypassing any security and potentially acquiring sensivite data:</p>
+
+<img src="steal.png" alt="demonstration of stealing data"/>
+
+<p>And a demonstration of erasing data from the database. Note that this is in the actual heroku app, not just my local version:</p>
+
+<img src="erase.png" alt="demonstration of erasing data"/>
+
+<p>A demonstration of inserting fraudulent data into the database. Again, this is in the actual heroku app, not just my local version. This presents a considerable security risk as it bypasses any serverside data validation (such as that suggested to avoid the XSS vulnerability above), as seen by the "undefined" fields.</p>
+
+<img src="insert.png" alt="demonstration of inserting fraudulent data"/>
+
+<p>To prevent this issue, the mongodb username and password should not be hardcoded in the server, but used as an environment variable, which could help to prevent attackers from finding them. Additionally it may be possible (perhaps not with mlab, but through other means) to have source authentication that prevents communication from sources other than the main app </p>
+
+<h2>Conclusion</h2>
+<p>
+While the cross-site scripting vulnerability could be fixed relatively easily, and the database access vulnerability could be mitigated by hiding the mongodb username and password, the latter would not be completely resolved without migrating to a platform that allowed for greate control over the system's security, for example, using mlab's SSL feature. Unfortunately, enabling this feature on mlab incurs a $80 monthly fee. If this is a private project which will not have significant public exposure and wouldn't be critical if the data is lost, it might not be necessisary, but if this project would be made available to the public, it's an option that should definitely be considered.  
+</p>
+
+</body>
+</html> 

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<title>Captain's Log</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script>
+	  $(document).ready(function(){
+		$('#msg').keyup(function(key){
+			if(key.keyCode == 13){
+				log($('#msg').val());
+				$('#msg').val("");
+				update_log();
+			}
+		});
+		//localStorage.setItem('logbook', '');
+
+		update_log();
+	  });
+
+	  function log(message){
+	  	var entry = {timestamp: (new Date).getTime(), message:message}
+	  	console.log(JSON.stringify(entry));
+	  	var logbook = localStorage.getItem('logbook')
+	  	if (logbook){
+	  		logbook = JSON.parse(logbook)
+	  		logbook.logs[logbook.logs.length] = entry
+		  	localStorage.setItem('logbook', JSON.stringify(logbook));
+	  	} else
+			localStorage.setItem('logbook', JSON.stringify({'logs':[entry]}));								
+	  }
+
+	  function update_log(){
+	  	var logbook = localStorage.getItem('logbook');
+	  	logbook = JSON.parse(logbook);
+	  	$('#log').html("");
+	  	for(entry in logbook.logs)
+	  	{
+	  		var item = logbook.logs.length - entry - 1;
+	  		$('#log').append('<div>' + parse_timestamp(logbook.logs[item].timestamp) + " - " + logbook.logs[item].message + '</div>');
+	  	}
+	  }
+
+	  function parse_timestamp(timestamp){
+	  	var date = new Date(timestamp);
+
+	  	var months = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+	  	return date.getFullYear() + " " + months[date.getMonth()] + " " + date.getDay() + ", " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	  }
+
+	</script>
+</head>
+
+<body>
+	<h1>Captain's Log</h1>
+	<h3>New entry: <input type="text" id="msg" name="msg" size="30" /></h3>
+	<div id="log"></div>
+</body>
+</html>
